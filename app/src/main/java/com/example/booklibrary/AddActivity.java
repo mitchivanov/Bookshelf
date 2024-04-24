@@ -1,24 +1,24 @@
 package com.example.booklibrary;
 
-import static android.Manifest.permission.READ_EXTERNAL_STORAGE;
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Toast;
-import android.content.ActivityNotFoundException;
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import android.content.Intent;
-import android.widget.Button;
-import android.widget.EditText;
 
 public class AddActivity extends AppCompatActivity {
 
@@ -43,26 +43,22 @@ public class AddActivity extends AppCompatActivity {
         // Обработчик нажатия на кнопку выбора файла
         select_file_button.setOnClickListener(view -> {
             // Проверяем разрешение на чтение внешнего хранилища
-            if (ContextCompat.checkSelfPermission(AddActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED) {
-                // Запрашиваем разрешение у пользователя, если оно не предоставлено
-                ActivityCompat.requestPermissions(AddActivity.this,
-                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                        PERMISSION_CODE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                startActivityForResult(intent, REQUEST_CODE_MANAGE_EXTERNAL_STORAGE);
             } else {
-                // Разрешение уже предоставлено, открываем выбор файла
-                openFilePicker();
+                // Запрашиваем разрешение на чтение внешнего хранилища, если необходимо
+                if (ContextCompat.checkSelfPermission(AddActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(AddActivity.this,
+                            new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                            PERMISSION_CODE);
+                } else {
+                    // Разрешение уже предоставлено, открываем выбор файла
+                    openFilePicker();
+                }
             }
         });
-
-        // Проверяем необходимость запроса разрешения для доступа к внешнему хранилищу (только для Android 11 и выше)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                intent.setData(Uri.parse("package:" + getPackageName()));
-                startActivityForResult(intent, REQUEST_CODE_MANAGE_EXTERNAL_STORAGE);
-            }
-        }
     }
 
     // Метод для открытия диалога выбора файла
