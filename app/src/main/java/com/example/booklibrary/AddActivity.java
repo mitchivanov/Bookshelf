@@ -13,6 +13,7 @@ import android.provider.Settings;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
+import android.content.SharedPreferences;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -28,7 +29,16 @@ public class AddActivity extends AppCompatActivity {
     // Поля для ввода названия книги, автора и кнопок
     EditText title_input, author_input;
     Button add_button, select_file_button;
-    String filePath;
+
+    private void saveStoragePermission(boolean permissionGranted) {
+        SharedPreferences sharedPreferences = getSharedPreferences("storage_permission", MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean("permission_granted", permissionGranted);
+        editor.apply();
+    }
+
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,25 +50,21 @@ public class AddActivity extends AppCompatActivity {
         author_input = findViewById(R.id.author_input);
         select_file_button = findViewById(R.id.choose_file_button);
 
-        // Обработчик нажатия на кнопку выбора файла
+        // Проверяем сохраненное разрешение перед запросом разрешения или открытием выбора файла
+        boolean storagePermissionGranted = getSharedPreferences("storage_permission", MODE_PRIVATE)
+                .getBoolean("permission_granted", false);
+
         select_file_button.setOnClickListener(view -> {
             // Проверяем разрешение на чтение внешнего хранилища
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
                 Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
-                startActivityForResult(intent, REQUEST_CODE_MANAGE_EXTERNAL_STORAGE);
+
             } else {
-                // Запрашиваем разрешение на чтение внешнего хранилища, если необходимо
-                if (ContextCompat.checkSelfPermission(AddActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                        != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(AddActivity.this,
-                            new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                            PERMISSION_CODE);
-                } else {
-                    // Разрешение уже предоставлено, открываем выбор файла
                     openFilePicker();
-                }
+
             }
         });
+
     }
 
     // Метод для открытия диалога выбора файла
@@ -81,14 +87,17 @@ public class AddActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Разрешение предоставлено, открываем выбор файла
+                // Разрешение предоставлено, сохраняем его и открываем выбор файла
+                saveStoragePermission(true);
                 openFilePicker();
             } else {
                 // Разрешение отклонено, информируем пользователя
                 Toast.makeText(this, "Отказано в доступе к чтению внешнего хранилища.", Toast.LENGTH_SHORT).show();
+                saveStoragePermission(false);
             }
         }
     }
+
 
     // Обработка результата выбора файла
     @SuppressLint("WrongConstant")
